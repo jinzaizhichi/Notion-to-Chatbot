@@ -2,7 +2,7 @@
 
 [![Awesome](https://awesome.re/badge.svg)](https://github.com/sindresorhus/awesome)
 [![PyPI version](https://img.shields.io/pypi/v/happyhorse-1-api.svg)](https://pypi.org/project/happyhorse-1-api/)
-[![GitHub stars](https://img.shields.io/github/stars/Anil-matcha/HappyHorse-1.0-API.svg)](https://github.com/Anil-matcha/HappyHorse-1.0-API/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/Anil-matcha/Awesome-HappyHorse-1.0-API-and-Prompt.svg)](https://github.com/Anil-matcha/Awesome-HappyHorse-1.0-API-and-Prompt/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 
@@ -63,8 +63,8 @@ pip install happyhorse-1-api
 ### From Source
 ```bash
 # Clone the HappyHorse 1.0 API repository
-git clone https://github.com/Anil-matcha/HappyHorse-1.0-API.git
-cd HappyHorse-1.0-API
+git clone https://github.com/Anil-matcha/Awesome-HappyHorse-1.0-API-and-Prompt.git
+cd Awesome-HappyHorse-1.0-API-and-Prompt
 
 # Install required dependencies
 pip install -r requirements.txt
