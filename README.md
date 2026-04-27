@@ -18,11 +18,8 @@ Try for free [ArenaAI](https://arena.ai/video).
 
 ---
 
-## ⚠️ Closed beta — access requirements
+## ⚠️ Access requirements
 
-HappyHorse 1.0 on muapi is currently in a **closed playground beta**. Today:
-
-- 🔒 **Not yet available via API keys.** Submitting to either endpoint with an `x-api-key` header returns `403 { "detail": "Happy Horse 1.0 is in closed beta and is not yet available via API keys. Use the muapi playground to try it." }`
 - 💳 **Pro or Business plan required.** Free-plan users get `403 { "detail": "Happy Horse 1.0 is available only on the Pro and Business plans. Upgrade at https://muapi.ai/topup#plans." }`
 - 🎨 Use Happy Horse today directly inside the [muapi playground](https://muapi.ai) on a Pro ($20/mo) or Business ($100/mo) plan. Early access to new models is a paid-plan perk.
 
