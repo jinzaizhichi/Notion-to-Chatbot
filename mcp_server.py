@@ -51,6 +51,48 @@ def image_to_video(prompt: str, images_list: list[str], aspect_ratio: str = "16:
 
 
 @mcp.tool()
+def reference_to_video(prompt: str, images_list: list[str], aspect_ratio: str = "16:9", duration: int = 5, resolution: str = "1080p", seed: int | None = None) -> str:
+    """Generate a HappyHorse 1.0 video from a prompt + 1–9 reference images.
+
+    Reference-to-video treats every supplied image as a style/subject reference
+    (characters, environment, look) — different from image-to-video which uses
+    a single start frame. Choose '1080p' (default) or '720p' (~half the cost).
+
+    :param prompt: Text describing the video content.
+    :param images_list: 1–9 reference image URLs (JPEG/PNG/WEBP, ≥400 px, ≤10 MB).
+    :param aspect_ratio: One of '16:9', '9:16', '1:1', '4:3', '3:4'.
+    :param duration: Duration in seconds (4-15, default 5).
+    :param resolution: '1080p' (default) or '720p'.
+    :param seed: Optional integer seed for reproducibility.
+    """
+    api = get_api()
+    result = api.reference_to_video(prompt, images_list, aspect_ratio, duration, resolution, seed)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool()
+def video_edit(prompt: str, video_url: str, images_list: list[str] | None = None, audio_setting: str = "auto", resolution: str = "1080p", seed: int | None = None) -> str:
+    """Edit an existing video with a natural-language instruction.
+
+    Optionally supply 0–5 reference images to anchor characters, styles, or
+    elements that should appear in the edited output. Audio can be regenerated
+    ('auto') or preserved from the source ('origin'). Choose '1080p' (default)
+    or '720p' (~half the cost).
+
+    :param prompt: Edit instruction describing the change.
+    :param video_url: Source video URL — MP4/MOV, 3–60 s, ≤100 MB,
+                      longer side ≤2160 px, shorter side ≥320 px, fps >8.
+    :param images_list: Optional 0–5 reference image URLs.
+    :param audio_setting: 'auto' (regenerate audio) or 'origin' (keep source audio).
+    :param resolution: '1080p' (default) or '720p'.
+    :param seed: Optional integer seed for reproducibility.
+    """
+    api = get_api()
+    result = api.video_edit(prompt, video_url, images_list, audio_setting, resolution, seed)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool()
 def upload_file(file_path: str) -> str:
     """Upload a local file (image or video) to muapi for use in generation tasks.
 

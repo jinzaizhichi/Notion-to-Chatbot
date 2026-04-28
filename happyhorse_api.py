@@ -9,8 +9,11 @@ load_dotenv()
 # Supported aspect ratios on HappyHorse 1.0 (matches the muapi schema).
 SUPPORTED_ASPECT_RATIOS = ("16:9", "9:16", "1:1", "4:3", "3:4")
 SUPPORTED_RESOLUTIONS = ("1080p", "720p")
+SUPPORTED_AUDIO_SETTINGS = ("auto", "origin")
 MIN_DURATION = 4
 MAX_DURATION = 15
+MAX_REFERENCE_IMAGES = 9       # reference-to-video
+MAX_EDIT_REFERENCE_IMAGES = 5  # video-edit
 
 
 class HappyHorseAPI:
@@ -101,6 +104,91 @@ class HappyHorseAPI:
             "aspect_ratio": aspect_ratio,
             "duration": int(duration),
         }
+        return self._post_request(endpoint, payload)
+
+    def reference_to_video(self, prompt, images_list, aspect_ratio="16:9", duration=5, resolution="1080p", seed=None):
+        """
+        Submit a HappyHorse 1.0 Reference-to-Video task.
+
+        Generate a video from a text prompt and 1–9 reference images. Unlike
+        Image-to-Video (which uses a single start frame), reference-to-video
+        treats every supplied image as a *style/subject reference* — the model
+        learns the look, characters, or environment from the references and
+        renders the prompt accordingly. Choose `resolution="720p"` for ~half
+        the cost of 1080p.
+
+        :param prompt: Text describing the video content.
+        :param images_list: 1–9 reference image URLs. JPEG/PNG/WEBP, ≥400px
+                            shortest side, ≤10 MB each.
+        :param aspect_ratio: One of '16:9', '9:16', '1:1', '4:3', '3:4'.
+        :param duration: Video duration in seconds (4-15, default 5).
+        :param resolution: '1080p' (default) or '720p'.
+        :param seed: Optional integer seed for reproducibility.
+        :return: JSON response with request_id.
+        """
+        self._validate_common(aspect_ratio, duration, resolution)
+        if not images_list:
+            raise ValueError("images_list must contain at least one reference image URL.")
+        if len(images_list) > MAX_REFERENCE_IMAGES:
+            raise ValueError(
+                f"images_list must contain at most {MAX_REFERENCE_IMAGES} reference images, got {len(images_list)}."
+            )
+        endpoint = f"{self.base_url}/happy-horse-1-reference-to-video-{resolution}"
+        payload = {
+            "prompt": prompt,
+            "images_list": list(images_list),
+            "aspect_ratio": aspect_ratio,
+            "duration": int(duration),
+        }
+        if seed is not None:
+            payload["seed"] = int(seed)
+        return self._post_request(endpoint, payload)
+
+    def video_edit(self, prompt, video_url, images_list=None, audio_setting="auto", resolution="1080p", seed=None):
+        """
+        Submit a HappyHorse 1.0 Video Edit task.
+
+        Transform an existing video using a natural-language edit instruction.
+        Optionally supply 0–5 reference images to anchor characters, styles or
+        elements that should appear in the edited output. Choose
+        `resolution="720p"` for ~half the cost of 1080p.
+
+        :param prompt: Edit instruction describing the change to apply.
+        :param video_url: Source video URL. MP4 or MOV (H.264 recommended),
+                          3–60 s, ≤100 MB, longer side ≤2160 px, shorter
+                          side ≥320 px, frame rate >8 fps.
+        :param images_list: Optional list of 0–5 reference image URLs.
+                            JPEG/PNG/WEBP, ≥300 px each side, ≤10 MB each.
+        :param audio_setting: 'auto' (regenerate audio to match the edit) or
+                              'origin' (keep the source audio track).
+        :param resolution: '1080p' (default) or '720p'.
+        :param seed: Optional integer seed for reproducibility.
+        :return: JSON response with request_id.
+        """
+        if resolution not in SUPPORTED_RESOLUTIONS:
+            raise ValueError(
+                f"resolution must be one of {SUPPORTED_RESOLUTIONS}, got {resolution!r}"
+            )
+        if audio_setting not in SUPPORTED_AUDIO_SETTINGS:
+            raise ValueError(
+                f"audio_setting must be one of {SUPPORTED_AUDIO_SETTINGS}, got {audio_setting!r}"
+            )
+        if not video_url:
+            raise ValueError("video_url is required for video_edit.")
+        if images_list and len(images_list) > MAX_EDIT_REFERENCE_IMAGES:
+            raise ValueError(
+                f"images_list must contain at most {MAX_EDIT_REFERENCE_IMAGES} reference images, got {len(images_list)}."
+            )
+        endpoint = f"{self.base_url}/happy-horse-1-video-edit-{resolution}"
+        payload = {
+            "prompt": prompt,
+            "video_url": video_url,
+            "audio_setting": audio_setting,
+        }
+        if images_list:
+            payload["images_list"] = list(images_list)
+        if seed is not None:
+            payload["seed"] = int(seed)
         return self._post_request(endpoint, payload)
 
     def _post_request(self, endpoint, payload):

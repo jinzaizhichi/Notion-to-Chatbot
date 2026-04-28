@@ -57,6 +57,8 @@ HappyHorse 1.0 is Alibaba's state-of-the-art AI video generation model, built by
 - ✅ **Text-to-Video (T2V) — 720p** — `POST /api/v1/happy-horse-1-text-to-video-720p` (~half the 1080p cost).
 - ✅ **Image-to-Video (I2V) — 1080p** — `POST /api/v1/happy-horse-1-image-to-video-1080p`.
 - ✅ **Image-to-Video (I2V) — 720p** — `POST /api/v1/happy-horse-1-image-to-video-720p` (~half the 1080p cost).
+- ✅ **Reference-to-Video (Ref2V) — 1080p / 720p** — `POST /api/v1/happy-horse-1-reference-to-video-{1080p|720p}`. Generate a video from a text prompt + **1–9 reference images** (style, subject, environment) — different from I2V's single start frame.
+- ✅ **Video Edit — 1080p / 720p** — `POST /api/v1/happy-horse-1-video-edit-{1080p|720p}`. Edit an existing video with a natural-language instruction; optionally anchor 0–5 reference images, keep or regenerate the audio track.
 - ✅ **Flexible Aspect Ratios**: `16:9`, `9:16` (TikTok/Reels), `1:1`, `4:3`, `3:4`.
 - ✅ **Duration**: 4–15 seconds per clip.
 - ✅ **Two output tiers**: native 1080p HD or budget-friendly 720p.
@@ -125,6 +127,29 @@ submission = api.text_to_video(
 # 2. Wait for completion
 result = api.wait_for_completion(submission['request_id'])
 print(f"Success! View your HappyHorse 1.0 video here: {result['outputs'][0]}")
+
+# 3. Reference-to-Video — generate from a prompt + up to 9 reference images
+ref_submission = api.reference_to_video(
+    prompt="The same character walks through a rainy neon-lit Tokyo alley at night",
+    images_list=[
+        "https://example.com/character_front.jpg",
+        "https://example.com/character_profile.jpg",
+        "https://example.com/style_neon_alley.jpg",
+    ],
+    aspect_ratio="9:16",
+    duration=8,
+)
+ref_result = api.wait_for_completion(ref_submission["request_id"])
+print(f"Reference-to-video output: {ref_result['outputs'][0]}")
+
+# 4. Video Edit — edit an existing video with a natural-language instruction
+edit_submission = api.video_edit(
+    prompt="Replace the daytime sky with a stormy sunset and add lightning flashes",
+    video_url="https://example.com/source_clip.mp4",
+    audio_setting="origin",   # keep the original audio; use "auto" to regenerate
+)
+edit_result = api.wait_for_completion(edit_submission["request_id"])
+print(f"Video-edit output: {edit_result['outputs'][0]}")
 ```
 
 ---
@@ -215,12 +240,104 @@ curl --location --request POST "https://api.muapi.ai/api/v1/happy-horse-1-image-
   }'
 ```
 
-### 5. Poll a prediction
+### 5. HappyHorse 1.0 Reference-to-Video — 1080p
+**Endpoint**: `POST https://api.muapi.ai/api/v1/happy-horse-1-reference-to-video-1080p`
+
+Generate a video from a text prompt and **1–9 reference images**. Each image is treated as a *style/subject reference* (character, environment, look) — this is different from I2V, which uses a single image as the start frame.
+
+| Field | Type | Required | Default | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| `prompt` | string | yes | — | Text description of the desired video. |
+| `images_list` | string[] | yes | — | 1–9 reference image URLs. JPEG/PNG/WEBP, ≥400 px shortest side, ≤10 MB each. |
+| `aspect_ratio` | enum | no | `"16:9"` | One of `16:9`, `9:16`, `1:1`, `4:3`, `3:4`. |
+| `duration` | int | no | `5` | Integer seconds, `4 <= duration <= 15`. |
+| `seed` | int | no | — | Optional seed (0–2147483647) for reproducibility. |
+| `webhook_url` | URL | no | — | Optional completion webhook. |
+
+```bash
+curl --location --request POST "https://api.muapi.ai/api/v1/happy-horse-1-reference-to-video-1080p" \
+  --header "Content-Type: application/json" \
+  --header "x-api-key: YOUR_API_KEY" \
+  --data-raw '{
+      "prompt": "The same character walks through a rainy neon-lit Tokyo alley at night",
+      "images_list": [
+          "https://example.com/character_front.jpg",
+          "https://example.com/character_profile.jpg",
+          "https://example.com/style_neon_alley.jpg"
+      ],
+      "aspect_ratio": "9:16",
+      "duration": 8
+  }'
+```
+
+### 6. HappyHorse 1.0 Reference-to-Video — 720p
+**Endpoint**: `POST https://api.muapi.ai/api/v1/happy-horse-1-reference-to-video-720p`
+
+Identical request body to the 1080p reference-to-video endpoint; cheaper 720p output.
+
+```bash
+curl --location --request POST "https://api.muapi.ai/api/v1/happy-horse-1-reference-to-video-720p" \
+  --header "Content-Type: application/json" \
+  --header "x-api-key: YOUR_API_KEY" \
+  --data-raw '{
+      "prompt": "The same character walks through a rainy neon-lit Tokyo alley at night",
+      "images_list": [
+          "https://example.com/character_front.jpg",
+          "https://example.com/style_neon_alley.jpg"
+      ],
+      "aspect_ratio": "9:16",
+      "duration": 8
+  }'
+```
+
+### 7. HappyHorse 1.0 Video Edit — 1080p
+**Endpoint**: `POST https://api.muapi.ai/api/v1/happy-horse-1-video-edit-1080p`
+
+Edit an existing video with a natural-language instruction. Optionally supply 0–5 reference images to anchor the look/characters/objects that should appear in the edited output, and choose whether to regenerate the audio (`auto`) or keep the original audio track (`origin`).
+
+| Field | Type | Required | Default | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| `prompt` | string | yes | — | Edit instruction describing the change to apply. |
+| `video_url` | URL | yes | — | Source video URL. MP4 or MOV (H.264 recommended), 3–60 s, ≤100 MB, longer side ≤2160 px, shorter side ≥320 px, frame rate >8 fps. |
+| `images_list` | string[] | no | `null` | 0–5 optional reference image URLs. JPEG/PNG/WEBP, ≥300 px each side, ≤10 MB each. |
+| `audio_setting` | enum | no | `"auto"` | `"auto"` regenerates audio to match the edit; `"origin"` keeps the source audio track. |
+| `seed` | int | no | — | Optional seed (0–2147483647) for reproducibility. |
+| `webhook_url` | URL | no | — | Optional completion webhook. |
+
+```bash
+curl --location --request POST "https://api.muapi.ai/api/v1/happy-horse-1-video-edit-1080p" \
+  --header "Content-Type: application/json" \
+  --header "x-api-key: YOUR_API_KEY" \
+  --data-raw '{
+      "prompt": "Replace the daytime sky with a stormy sunset and add lightning flashes",
+      "video_url": "https://example.com/source_clip.mp4",
+      "audio_setting": "origin"
+  }'
+```
+
+### 8. HappyHorse 1.0 Video Edit — 720p
+**Endpoint**: `POST https://api.muapi.ai/api/v1/happy-horse-1-video-edit-720p`
+
+Same body as the 1080p video-edit endpoint; cheaper 720p output.
+
+```bash
+curl --location --request POST "https://api.muapi.ai/api/v1/happy-horse-1-video-edit-720p" \
+  --header "Content-Type: application/json" \
+  --header "x-api-key: YOUR_API_KEY" \
+  --data-raw '{
+      "prompt": "Restyle the entire clip as a 1990s anime cel-shaded look",
+      "video_url": "https://example.com/source_clip.mp4",
+      "images_list": ["https://example.com/anime_style_ref.jpg"],
+      "audio_setting": "auto"
+  }'
+```
+
+### 9. Poll a prediction
 **Endpoint**: `GET https://api.muapi.ai/api/v1/predictions/{request_id}/result`
 
 Returns the muapi standard prediction envelope — `status` transitions through `queued` → `processing` → `completed` (or `failed`). On completion the `outputs` array contains muapi-hosted video URLs; the top-level `video` key mirrors `outputs[0]` for convenience.
 
-### 6. Upload a local file
+### 10. Upload a local file
 **Endpoint**: `POST https://api.muapi.ai/api/v1/upload_file`
 
 Multipart-form helper to host a local image on muapi so it can be referenced in `images_list`.
@@ -233,6 +350,8 @@ Multipart-form helper to host a local image on muapi so it can be referenced in 
 | :--- | :--- | :--- |
 | `text_to_video` | `prompt`, `aspect_ratio`, `duration`, `resolution` | Generate a clip from text. `resolution` defaults to `"1080p"`; pass `"720p"` to halve the cost. |
 | `image_to_video` | `prompt`, `images_list`, `aspect_ratio`, `duration`, `resolution` | Animate a starting image. `resolution` defaults to `"1080p"`; `"720p"` available. |
+| `reference_to_video` | `prompt`, `images_list`, `aspect_ratio`, `duration`, `resolution`, `seed` | Generate a clip from a prompt + 1–9 reference images (style/subject/environment). |
+| `video_edit` | `prompt`, `video_url`, `images_list`, `audio_setting`, `resolution`, `seed` | Edit an existing video with a natural-language instruction; 0–5 optional reference images; keep or regenerate audio. |
 | `upload_file` | `file_path` | Upload a local file (image or video) to MuAPI and get back its hosted URL. |
 | `get_result` | `request_id` | Check task status and retrieve outputs. |
 | `wait_for_completion` | `request_id`, `poll_interval`, `timeout` | Blocking helper — polls until generation completes. |
@@ -241,12 +360,16 @@ Multipart-form helper to host a local image on muapi so it can be referenced in 
 
 ## 💰 Pricing
 
-HappyHorse 1.0 bills flat per-second. 720p costs half of 1080p:
+HappyHorse 1.0 bills flat per-second. 720p costs half of 1080p across every endpoint. Reference-to-Video and Video Edit price slightly above plain T2V/I2V because they consume more reference / video conditioning.
 
-| Output | Rate | 5 s clip | 10 s clip | 15 s clip |
-| :--- | :--- | :--- | :--- | :--- |
-| 1080p | **$0.5625 / sec** | $2.81 | $5.63 | $8.44 |
-| 720p | **$0.28125 / sec** | $1.41 | $2.81 | $4.22 |
+| Endpoint | Output | Rate | 5 s clip | 10 s clip | 15 s clip |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Text-to-Video / Image-to-Video | 1080p | **$0.5625 / sec** | $2.81 | $5.63 | $8.44 |
+| Text-to-Video / Image-to-Video | 720p | **$0.28125 / sec** | $1.41 | $2.81 | $4.22 |
+| Reference-to-Video | 1080p | **$0.65625 / sec** | $3.28 | $6.56 | $9.84 |
+| Reference-to-Video | 720p | **$0.328125 / sec** | $1.64 | $3.28 | $4.92 |
+| Video Edit | 1080p | **$0.65625 / sec** | $3.28 | $6.56 | $9.84 |
+| Video Edit | 720p | **$0.328125 / sec** | $1.64 | $3.28 | $4.92 |
 
 Pricing shown here matches the live cost-strategy on muapi.
 
@@ -317,4 +440,4 @@ MIT — see the [LICENSE](LICENSE) file.
 
 ---
 
-**Keywords**: HappyHorse 1.0 API, Awesome HappyHorse 1.0, HappyHorse 1.0 Prompts, Alibaba HappyHorse, AI Video Generator, Text-to-Video AI, Image-to-Video API, HappyHorse Python SDK, Alibaba Video AI, MuAPI, Video Generation API, Native 1080p AI Video, AI Video Creation, HappyHorse API Documentation, HappyHorse I2V, HappyHorse T2V, AI Movie Generator, Python Video API, HappyHorse Tutorial, #1 AI Video Model.
+**Keywords**: HappyHorse 1.0 API, Awesome HappyHorse 1.0, HappyHorse 1.0 Prompts, Alibaba HappyHorse, AI Video Generator, Text-to-Video AI, Image-to-Video API, Reference-to-Video API, Video Edit API, HappyHorse Python SDK, Alibaba Video AI, MuAPI, Video Generation API, Native 1080p AI Video, AI Video Creation, HappyHorse API Documentation, HappyHorse I2V, HappyHorse T2V, HappyHorse Ref2V, HappyHorse Video Edit, AI Movie Generator, Python Video API, HappyHorse Tutorial, #1 AI Video Model.
